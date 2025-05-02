@@ -1,0 +1,51 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Cython debug symbols
+cython_debug/
+
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+
+# VS Code settings
+.vscode/
+
+# Pytest
+.cache/
+*.cover
+coverage.xml
+
+# Logs and local files
+*.log
+*.sqlite3
+*.db
+
+# mypy
+.mypy_cache/
+
+# pyright
+pyrightconfig.json
+
+# PyInstaller
+*.spec
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints
+
+# MacOS
+.DS_Store
+
+# dotenv
+.env
+.env.*
+
+# IDEs
+.idea/
+*.iml
