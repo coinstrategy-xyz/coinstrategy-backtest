@@ -17,4 +17,4 @@ async def get_klines(
     ).sort(-Kline.openTime).to_list()
 
     print(f"Fetched {len(klines)} klines for {symbol} at interval {interval}")
-    return rsi_ema_strategy.rsi_ema_strategy(klines)
+    return await rsi_ema_strategy.rsi_ema_strategy(klines, symbol, interval)
