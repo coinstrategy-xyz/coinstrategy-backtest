@@ -32,7 +32,7 @@ async def rsi_ema_strategy(
     else:
         df["trend_4h"] = True
 
-    df.to_excel(f"{symbol}_{interval}_debug.xlsx", engine='openpyxl')
+    # df.to_excel(f"{symbol}_{interval}_debug.xlsx", engine='openpyxl')
 
     add_signals(df, rsi_threshold)
 
