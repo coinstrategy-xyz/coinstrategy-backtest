@@ -32,7 +32,7 @@ async def rsi_ema_strategy(
     else:
         df["trend_4h"] = True
 
-    df.to_excel(f"{symbol}_{interval}_debug.xlsx", engine='openpyxl')
+    # df.to_excel(f"{symbol}_{interval}_debug.xlsx", engine='openpyxl')
 
     add_signals(df, rsi_threshold)
 
@@ -110,7 +110,7 @@ def generate_trades(df: pd.DataFrame, symbol: str, interval: str, rr_ratio: floa
 
 
 def simulate_trade(df, start_idx, symbol, interval, entry_time, entry_price, atr, rr_ratio, side: str):
-    atr_multiplier = 4
+    atr_multiplier = 6
     risk = atr * atr_multiplier
     reward = risk * rr_ratio
 
@@ -133,44 +133,44 @@ def simulate_trade(df, start_idx, symbol, interval, entry_time, entry_price, atr
         if side == "long":
             if low <= sl:
                 return Backtest(
-                    strategy_name="RSI-EMA", symbol=symbol, interval=interval,
-                    entry_price=entry_price, entry_time=entry_time,
-                    stop_loss_price=sl, stop_loss_percent=sl_pct,
-                    take_profit_price=tp, take_profit_percent=tp_pct,
-                    exit_time=exit_time, result_pct=-sl_pct,
+                    strategyName="RSI-EMA", symbol=symbol, interval=interval,
+                    entryPrice=entry_price, entryTime=entry_time,
+                    stopLossPrice=sl, stopLossPercent=sl_pct,
+                    takeProfitPrice=tp, takeProfitPercent=tp_pct,
+                    exitTime=exit_time, resultPct=-sl_pct,
                     side="long", status="loss", atr=atr,
-                    rsi=row["rsi"], atr_multiplier=atr_multiplier
+                    rsi=row["rsi"], atrMultiplier=atr_multiplier
                 )
             elif high >= tp:
                 return Backtest(
-                    strategy_name="RSI-EMA", symbol=symbol, interval=interval,
-                    entry_price=entry_price, entry_time=entry_time,
-                    stop_loss_price=sl, stop_loss_percent=sl_pct,
-                    take_profit_price=tp, take_profit_percent=tp_pct,
-                    exit_time=exit_time, result_pct=tp_pct,
+                    strategyName="RSI-EMA", symbol=symbol, interval=interval,
+                    entryPrice=entry_price, entryTime=entry_time,
+                    stopLossPrice=sl, stopLossPercent=sl_pct,
+                    takeProfitPrice=tp, takeProfitPercent=tp_pct,
+                    exitTime=exit_time, resultPct=tp_pct,
                     side="long", status="win", atr=atr,
-                    rsi=row["rsi"], atr_multiplier=atr_multiplier
+                    rsi=row["rsi"], atrMultiplier=atr_multiplier
                 )
         else:
             if high >= sl:
                 return Backtest(
-                    strategy_name="RSI-EMA", symbol=symbol, interval=interval,
-                    entry_price=entry_price, entry_time=entry_time,
-                    stop_loss_price=sl, stop_loss_percent=sl_pct,
-                    take_profit_price=tp, take_profit_percent=tp_pct,
-                    exit_time=exit_time, result_pct=-sl_pct,
+                    strategyName="RSI-EMA", symbol=symbol, interval=interval,
+                    entryPrice=entry_price, entryTime=entry_time,
+                    stopLossPrice=sl, stopLossPercent=sl_pct,
+                    takeProfitPrice=tp, takeProfitPercent=tp_pct,
+                    exitTime=exit_time, resultPct=-sl_pct,
                     side="short", status="loss", atr=atr,
-                    rsi=row["rsi"], atr_multiplier=atr_multiplier
+                    rsi=row["rsi"], atrMultiplier=atr_multiplier
                 )
             elif low <= tp:
                 return Backtest(
-                    strategy_name="RSI-EMA", symbol=symbol, interval=interval,
-                    entry_price=entry_price, entry_time=entry_time,
-                    stop_loss_price=sl, stop_loss_percent=sl_pct,
-                    take_profit_price=tp, take_profit_percent=tp_pct,
-                    exit_time=exit_time, result_pct=tp_pct,
+                    strategyName="RSI-EMA", symbol=symbol, interval=interval,
+                    entryPrice=entry_price, entryTime=entry_time,
+                    stopLossPrice=sl, stopLossPercent=sl_pct,
+                    takeProfitPrice=tp, takeProfitPercent=tp_pct,
+                    exitTime=exit_time, resultPct=tp_pct,
                     side="short", status="win", atr=atr,
-                    rsi=row["rsi"], atr_multiplier=atr_multiplier
+                    rsi=row["rsi"], atrMultiplier=atr_multiplier
                 )
     return None
 
