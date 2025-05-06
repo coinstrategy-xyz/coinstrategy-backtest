@@ -1,8 +1,6 @@
 from enum import Enum
-from beanie import Document, Indexed
-from pydantic import BaseModel, Field
-from typing import Optional
-from datetime import datetime
+from beanie import Document
+from pydantic import Field
 
 
 class KlineInterval(str, Enum):
@@ -24,6 +22,6 @@ class Kline(Document):
     closeTime: float
 
     class Settings:
-        name = "klines"  # collection name
-        use_state_management = True  # like aggregate root
+        name = "klines"
+        use_state_management = True
         validate_on_save = True

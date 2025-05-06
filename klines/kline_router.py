@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query
-from typing import List
 from klines.kline_model import Kline
 from strategies import rsi_ema_strategy
 
