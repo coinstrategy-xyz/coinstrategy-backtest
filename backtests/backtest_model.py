@@ -28,7 +28,7 @@ class Backtest(Document):
     side: Literal["long",
                   "short"] = Field(..., description="Trade side: long or short")
     status: Literal["win",
-                    "loss"] = Field(..., description="Trade result status")
+                    "loss", "breakeven"] = Field(..., description="Trade result status")
     atr: float = Field(...,
                        description="Average True Range (ATR) at the time of entry")
     rsi: float = Field(...,
