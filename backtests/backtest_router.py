@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from klines.kline_model import Kline
 from strategies import rsi_ema_strategy
 from pairs.pair_model import Pair
+from strategies.strategy_model import Strategy
 
 router = APIRouter(prefix="/back-tests", tags=["Backtests"])
 semaphore = asyncio.Semaphore(5)  # Chỉ cho phép tối đa 5 task chạy cùng lúc

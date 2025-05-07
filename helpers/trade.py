@@ -1,4 +1,3 @@
-
 from typing import Dict, List
 import pandas as pd
 from backtests.backtest_model import Backtest
@@ -22,11 +21,9 @@ def prepare_dataframe(candles):
     if not candles:
         return pd.DataFrame()
 
-    # Nếu là dict (từ Redis cache), giữ nguyên
     if isinstance(candles[0], dict):
         df = pd.DataFrame(candles)
     else:
-        # Nếu là Kline document (từ DB), convert về dict
         df = pd.DataFrame([{
             "openTime": k.openTime,
             "open": k.open,
@@ -39,6 +36,7 @@ def prepare_dataframe(candles):
 
     df["timestamp"] = pd.to_datetime(df["openTime"], unit="ms")
     df.set_index("timestamp", inplace=True)
+    df.sort_index(inplace=True)
     return df
 
 
@@ -60,6 +58,10 @@ def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_time, e
     for j in range(start_idx + 1, len(df)):
         row = df.iloc[j]
         exit_time = row.name
+
+        if exit_time <= entry_time:
+            continue
+
         high, low = row["high"], row["low"]
 
         if side == "long":

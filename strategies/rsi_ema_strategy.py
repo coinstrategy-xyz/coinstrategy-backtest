@@ -55,27 +55,38 @@ async def rsi_ema_strategy(
 
     for atr_multiplier in atr_multipliers:
         for rr_ratio in rr_ratios:
-            trades = rsi_ema_generate_trades(
-                df, symbol, interval, rr_ratio, atr_multiplier)
-
-            if trades:
-                await Backtest.insert_many(trades)
-
-            result = summarize_results(trades)
-            strategy = Strategy(
-                name="RSI-EMA",
-                symbol=symbol,
-                interval=interval,
-                totalTrades=len(trades),
-                winRate=result["win_rate"],
-                totalReturnPct=result["total_return_pct"],
-                maxDrawdownPct=result["max_drawdown_pct"],
-                finalBalance=result["final_balance"],
-                avgHoursPerTrade=result["avg_hours_per_trade"],
-                rrRatio=rr_ratio,
-                atr_multiplier=atr_multiplier,
+            strategy = await Strategy.find_one(
+                Strategy.symbol == symbol,
+                Strategy.interval == interval,
+                Strategy.rrRatio == rr_ratio,
+                Strategy.atr_multiplier == atr_multiplier,
             )
-            await Strategy.insert(strategy)
+            if strategy:
+                print(
+                    f"Strategy already exists for {symbol} at {interval} with rr_ratio {rr_ratio} and atr_multiplier {atr_multiplier}")
+                continue
+            else:
+                trades = rsi_ema_generate_trades(
+                    df, symbol, interval, rr_ratio, atr_multiplier)
+
+                if trades:
+                    await Backtest.insert_many(trades)
+
+                    result = summarize_results(trades)
+                    strategy = Strategy(
+                        name="RSI-EMA",
+                        symbol=symbol,
+                        interval=interval,
+                        totalTrades=len(trades),
+                        winRate=result["win_rate"],
+                        totalReturnPct=result["total_return_pct"],
+                        maxDrawdownPct=result["max_drawdown_pct"],
+                        finalBalance=result["final_balance"],
+                        avgHoursPerTrade=result["avg_hours_per_trade"],
+                        rrRatio=rr_ratio,
+                        atr_multiplier=atr_multiplier,
+                    )
+                    await Strategy.insert(strategy)
 
 
 def rsi_ema_add_signals(df: pd.DataFrame, rsi_threshold: float):
