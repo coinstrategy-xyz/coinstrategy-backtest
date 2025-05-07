@@ -5,6 +5,11 @@ import pandas as pd
 from backtests.backtest_model import Backtest
 from helpers.indicator import compute_trend_4h
 from helpers.trade import add_indicators, align_trend_to_lower_tf, prepare_dataframe, simulate_trade, summarize_results
+from strategies.strategy_model import Strategy
+from packages.redis import redis_client
+
+from datetime import timedelta
+import ujson as json
 
 
 async def rsi_ema_strategy(
@@ -15,17 +20,26 @@ async def rsi_ema_strategy(
     ema_period: int = 200,
     atr_period: int = 14,
     rsi_threshold: float = 30,
-    rr_ratio: float = 2.0,
 ) -> Dict:
     df = prepare_dataframe(candles)
     add_indicators(df, rsi_period, ema_period, atr_period)
 
     if interval in ["15m", "1h"]:
-        from klines.kline_model import Kline
+        cache_key = f"klines_4h:{symbol}"
 
-        klines_4h = await Kline.find(
-            Kline.symbol == symbol, Kline.interval == "4h"
-        ).sort(-Kline.openTime).to_list()
+        cached_klines = await redis_client.get(cache_key)
+        if cached_klines:
+            klines_4h = json.loads(cached_klines)
+        else:
+            from klines.kline_model import Kline
+
+            klines_4h_docs = await Kline.find(
+                Kline.symbol == symbol, Kline.interval == "4h"
+            ).sort(-Kline.openTime).to_list()
+
+            klines_4h = [k.model_dump(exclude={"id"}) for k in klines_4h_docs]
+
+            await redis_client.setex(cache_key, timedelta(hours=1), json.dumps(klines_4h))
 
         df_4h = prepare_dataframe(klines_4h)
         df_4h = compute_trend_4h(df_4h, ema_period)
@@ -36,13 +50,43 @@ async def rsi_ema_strategy(
     # df.to_excel(f"{symbol}_{interval}_debug.xlsx", engine='openpyxl')
 
     rsi_ema_add_signals(df, rsi_threshold)
+    atr_multipliers = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0]
+    rr_ratios = [1.5, 2.0, 2.5, 3.0]
 
-    trades = rsi_ema_generate_trades(df, symbol, interval, rr_ratio)
+    for atr_multiplier in atr_multipliers:
+        for rr_ratio in rr_ratios:
+            strategy = await Strategy.find_one(
+                Strategy.symbol == symbol,
+                Strategy.interval == interval,
+                Strategy.rrRatio == rr_ratio,
+                Strategy.atr_multiplier == atr_multiplier,
+            )
+            if strategy:
+                print(
+                    f"Strategy already exists for {symbol} at {interval} with rr_ratio {rr_ratio} and atr_multiplier {atr_multiplier}")
+                continue
+            else:
+                trades = rsi_ema_generate_trades(
+                    df, symbol, interval, rr_ratio, atr_multiplier)
 
-    if trades:
-        await Backtest.insert_many(trades)
+                if trades:
+                    await Backtest.insert_many(trades)
 
-    return summarize_results(trades)
+                    result = summarize_results(trades)
+                    strategy = Strategy(
+                        name="RSI-EMA",
+                        symbol=symbol,
+                        interval=interval,
+                        totalTrades=len(trades),
+                        winRate=result["win_rate"],
+                        totalReturnPct=result["total_return_pct"],
+                        maxDrawdownPct=result["max_drawdown_pct"],
+                        finalBalance=result["final_balance"],
+                        avgHoursPerTrade=result["avg_hours_per_trade"],
+                        rrRatio=rr_ratio,
+                        atr_multiplier=atr_multiplier,
+                    )
+                    await Strategy.insert(strategy)
 
 
 def rsi_ema_add_signals(df: pd.DataFrame, rsi_threshold: float):
@@ -65,7 +109,7 @@ def rsi_ema_add_signals(df: pd.DataFrame, rsi_threshold: float):
     )
 
 
-def rsi_ema_generate_trades(df: pd.DataFrame, symbol: str, interval: str, rr_ratio: float) -> List[Backtest]:
+def rsi_ema_generate_trades(df: pd.DataFrame, symbol: str, interval: str, rr_ratio: float, atr_multiplier: float) -> List[Backtest]:
     trades = []
 
     for i in range(len(df) - 1):
@@ -84,11 +128,11 @@ def rsi_ema_generate_trades(df: pd.DataFrame, symbol: str, interval: str, rr_rat
 
         if row["signal_long"]:
             trades.append(simulate_trade("RSI-EMA",
-                                         df, i, symbol, interval, entry_time, entry_price, atr, rr_ratio, side="long"
+                                         df, i, symbol, interval, entry_time, entry_price, atr, rr_ratio, side="long", atr_multiplier=atr_multiplier
                                          ))
         elif row["signal_short"]:
             trades.append(simulate_trade("RSI-EMA",
-                                         df, i, symbol, interval, entry_time, entry_price, atr, rr_ratio, side="short"
+                                         df, i, symbol, interval, entry_time, entry_price, atr, rr_ratio, side="short", atr_multiplier=atr_multiplier
                                          ))
 
     return [t for t in trades if t]

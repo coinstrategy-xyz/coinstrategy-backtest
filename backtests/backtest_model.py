@@ -1,6 +1,6 @@
 from beanie import Document
-from pydantic import BaseModel, Field
-from typing import List, Literal
+from pydantic import Field
+from typing import Literal
 from datetime import datetime
 
 
@@ -35,6 +35,8 @@ class Backtest(Document):
                        description="Relative Strength Index (RSI) at the time of entry")
     atrMultiplier: float = Field(...,
                                  description="ATR multiplier used for take profit calculation")
+    rrRatio: float = Field(...,
+                           description="Risk-reward ratio used for trade")
 
     class Settings:
         name = "backtests"

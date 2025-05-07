@@ -1,4 +1,3 @@
-
 from typing import Dict, List
 import pandas as pd
 from backtests.backtest_model import Backtest
@@ -18,24 +17,30 @@ def add_indicators(df: pd.DataFrame, rsi_period: int, ema_period: int, atr_perio
     df["volume_ma"] = df["volume"].rolling(20).mean()
 
 
-def prepare_dataframe(candles: List[Dict]) -> pd.DataFrame:
-    df = pd.DataFrame([{
-        "openTime": k.openTime,
-        "open": k.open,
-        "high": k.high,
-        "low": k.low,
-        "close": k.close,
-        "volume": k.volume,
-        "closeTime": k.closeTime
-    } for k in candles])
+def prepare_dataframe(candles):
+    if not candles:
+        return pd.DataFrame()
+
+    if isinstance(candles[0], dict):
+        df = pd.DataFrame(candles)
+    else:
+        df = pd.DataFrame([{
+            "openTime": k.openTime,
+            "open": k.open,
+            "high": k.high,
+            "low": k.low,
+            "close": k.close,
+            "volume": k.volume,
+            "closeTime": k.closeTime
+        } for k in candles])
+
     df["timestamp"] = pd.to_datetime(df["openTime"], unit="ms")
     df.set_index("timestamp", inplace=True)
-    df = df.sort_index()
+    df.sort_index(inplace=True)
     return df
 
 
-def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_time, entry_price, atr, rr_ratio, side: str):
-    atr_multiplier = 3
+def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_time, entry_price, atr, rr_ratio, side: str, atr_multiplier: float = 2.0):
     risk = atr * atr_multiplier
     reward = risk * rr_ratio
 
@@ -53,6 +58,10 @@ def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_time, e
     for j in range(start_idx + 1, len(df)):
         row = df.iloc[j]
         exit_time = row.name
+
+        if exit_time <= entry_time:
+            continue
+
         high, low = row["high"], row["low"]
 
         if side == "long":
@@ -64,7 +73,7 @@ def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_time, e
                     takeProfitPrice=tp, takeProfitPercent=tp_pct,
                     exitTime=exit_time, resultPct=-sl_pct,
                     side="long", status="loss", atr=atr,
-                    rsi=row["rsi"], atrMultiplier=atr_multiplier
+                    rsi=row["rsi"], atrMultiplier=atr_multiplier, rrRatio=rr_ratio
                 )
             elif high >= tp:
                 return Backtest(
@@ -74,7 +83,7 @@ def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_time, e
                     takeProfitPrice=tp, takeProfitPercent=tp_pct,
                     exitTime=exit_time, resultPct=tp_pct,
                     side="long", status="win", atr=atr,
-                    rsi=row["rsi"], atrMultiplier=atr_multiplier
+                    rsi=row["rsi"], atrMultiplier=atr_multiplier, rrRatio=rr_ratio
                 )
         else:
             if high >= sl:
@@ -85,7 +94,7 @@ def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_time, e
                     takeProfitPrice=tp, takeProfitPercent=tp_pct,
                     exitTime=exit_time, resultPct=-sl_pct,
                     side="short", status="loss", atr=atr,
-                    rsi=row["rsi"], atrMultiplier=atr_multiplier
+                    rsi=row["rsi"], atrMultiplier=atr_multiplier, rrRatio=rr_ratio
                 )
             elif low <= tp:
                 return Backtest(
@@ -95,7 +104,7 @@ def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_time, e
                     takeProfitPrice=tp, takeProfitPercent=tp_pct,
                     exitTime=exit_time, resultPct=tp_pct,
                     side="short", status="win", atr=atr,
-                    rsi=row["rsi"], atrMultiplier=atr_multiplier
+                    rsi=row["rsi"], atrMultiplier=atr_multiplier, rrRatio=rr_ratio
                 )
     return None
 
@@ -112,11 +121,25 @@ def summarize_results(trades: List[Backtest]) -> dict[str, float]:
                  for i, e in enumerate(equity[1:])]
     max_drawdown = min(drawdowns) if drawdowns else 0
 
+    initial_balance = 100
+    final_balance = equity[-1] * initial_balance
+
+    total_hours = 0.0
+    valid_trades = 0
+    for t in trades:
+        if isinstance(t.entryTime, pd.Timestamp) and isinstance(t.exitTime, pd.Timestamp):
+            total_hours += (t.exitTime - t.entryTime).total_seconds() / 3600.0
+            valid_trades += 1
+
+    avg_hours_per_trade = total_hours / valid_trades if valid_trades else 0.0
+
     return {
         "total_trades": len(trades),
         "win_rate": round(win_rate * 100, 2),
         "total_return_pct": round((equity[-1] - 1) * 100, 2),
-        "max_drawdown_pct": round(max_drawdown * 100, 2)
+        "max_drawdown_pct": round(max_drawdown * 100, 2),
+        "final_balance": round(final_balance, 2),
+        "avg_hours_per_trade": round(avg_hours_per_trade, 2),
     }
 
 
