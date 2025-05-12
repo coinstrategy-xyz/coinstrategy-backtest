@@ -6,3 +6,4 @@ beanie
 pandas
 ta
 redis
+ujson
