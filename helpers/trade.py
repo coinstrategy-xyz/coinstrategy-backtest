@@ -40,7 +40,19 @@ def prepare_dataframe(candles):
     return df
 
 
-def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_time, entry_price, atr, rr_ratio, side: str, atr_multiplier: float = 2.0):
+async def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_time, entry_price, atr, rr_ratio, side: str, atr_multiplier: float = 2.0):
+    existing = await Backtest.find_one({
+        "strategyName": strategy_name,
+        "symbol": symbol,
+        "interval": interval,
+        "entryTime": entry_time,
+        "atrMultiplier": atr_multiplier,
+        "rrRatio": rr_ratio
+    })
+
+    if existing:
+        return None
+
     risk = atr * atr_multiplier
     reward = risk * rr_ratio
 

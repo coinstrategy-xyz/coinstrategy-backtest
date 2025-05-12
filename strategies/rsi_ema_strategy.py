@@ -24,7 +24,7 @@ async def rsi_ema_strategy(
     df = prepare_dataframe(candles)
     add_indicators(df, rsi_period, ema_period, atr_period)
 
-    if interval in ["15m", "1h"]:
+    if interval in ["5m", "15m", "1h"]:
         cache_key = f"klines_4h:{symbol}"
 
         cached_klines = await redis_client.get(cache_key)
@@ -66,7 +66,7 @@ async def rsi_ema_strategy(
                     f"Strategy already exists for {symbol} at {interval} with rr_ratio {rr_ratio} and atr_multiplier {atr_multiplier}")
                 continue
             else:
-                trades = rsi_ema_generate_trades(
+                trades = await rsi_ema_generate_trades(
                     df, symbol, interval, rr_ratio, atr_multiplier)
 
                 if trades:
@@ -109,7 +109,7 @@ def rsi_ema_add_signals(df: pd.DataFrame, rsi_threshold: float):
     )
 
 
-def rsi_ema_generate_trades(df: pd.DataFrame, symbol: str, interval: str, rr_ratio: float, atr_multiplier: float) -> List[Backtest]:
+async def rsi_ema_generate_trades(df: pd.DataFrame, symbol: str, interval: str, rr_ratio: float, atr_multiplier: float) -> List[Backtest]:
     trades = []
 
     for i in range(len(df) - 1):
@@ -127,12 +127,12 @@ def rsi_ema_generate_trades(df: pd.DataFrame, symbol: str, interval: str, rr_rat
         entry_time = next_row.name
 
         if row["signal_long"]:
-            trades.append(simulate_trade("RSI-EMA",
-                                         df, i, symbol, interval, entry_time, entry_price, atr, rr_ratio, side="long", atr_multiplier=atr_multiplier
-                                         ))
+            trades.append(await simulate_trade("RSI-EMA",
+                                               df, i, symbol, interval, entry_time, entry_price, atr, rr_ratio, side="long", atr_multiplier=atr_multiplier
+                                               ))
         elif row["signal_short"]:
-            trades.append(simulate_trade("RSI-EMA",
-                                         df, i, symbol, interval, entry_time, entry_price, atr, rr_ratio, side="short", atr_multiplier=atr_multiplier
-                                         ))
+            trades.append(await simulate_trade("RSI-EMA",
+                                               df, i, symbol, interval, entry_time, entry_price, atr, rr_ratio, side="short", atr_multiplier=atr_multiplier
+                                               ))
 
     return [t for t in trades if t]

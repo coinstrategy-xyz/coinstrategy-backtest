@@ -12,7 +12,8 @@ semaphore = asyncio.Semaphore(5)  # Chỉ cho phép tối đa 5 task chạy cùn
 @router.get("/")
 async def backtest_all():
     pairs = await Pair.find().to_list()
-    intervals = ["15m", "1h", "4h"]
+    # intervals = ["15m", "1h", "4h"]
+    intervals = ["5m"]
 
     tasks = []
 
