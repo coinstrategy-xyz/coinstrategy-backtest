@@ -6,7 +6,7 @@ from pairs.pair_model import Pair
 from strategies.strategy_model import Strategy
 
 router = APIRouter(prefix="/back-tests", tags=["Backtests"])
-semaphore = asyncio.Semaphore(5)  # Chỉ cho phép tối đa 5 task chạy cùng lúc
+semaphore = asyncio.Semaphore(1)  # Chỉ cho phép tối đa 5 task chạy cùng lúc
 
 
 @router.get("/")
