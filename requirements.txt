@@ -5,3 +5,4 @@ motor
 beanie
 pandas
 ta
+redis

@@ -7,6 +7,7 @@ from helpers.indicator import compute_trend_4h
 from helpers.trade import add_indicators, align_trend_to_lower_tf, prepare_dataframe, simulate_trade, summarize_results
 from strategies.strategy_model import Strategy
 from packages.redis import redis_client
+from klines.kline_model import Kline
 
 from datetime import timedelta
 import ujson as json
@@ -27,19 +28,18 @@ async def rsi_ema_strategy(
     if interval in ["5m", "15m", "1h"]:
         cache_key = f"klines_4h:{symbol}"
 
-        cached_klines = await redis_client.get(cache_key)
-        if cached_klines:
-            klines_4h = json.loads(cached_klines)
-        else:
-            from klines.kline_model import Kline
+        # cached_klines = await redis_client.get(cache_key)
+        # if cached_klines:
+        #     klines_4h = json.loads(cached_klines)
+        # else:
 
-            klines_4h_docs = await Kline.find(
-                Kline.symbol == symbol, Kline.interval == "4h"
-            ).sort(-Kline.openTime).to_list()
+        klines_4h_docs = await Kline.find(
+            Kline.symbol == symbol, Kline.interval == "4h"
+        ).sort(-Kline.openTime).to_list()
 
-            klines_4h = [k.model_dump(exclude={"id"}) for k in klines_4h_docs]
+        klines_4h = [k.model_dump(exclude={"id"}) for k in klines_4h_docs]
 
-            await redis_client.setex(cache_key, timedelta(hours=1), json.dumps(klines_4h))
+        # await redis_client.setex(cache_key, timedelta(hours=1), json.dumps(klines_4h))
 
         df_4h = prepare_dataframe(klines_4h)
         df_4h = compute_trend_4h(df_4h, ema_period)
