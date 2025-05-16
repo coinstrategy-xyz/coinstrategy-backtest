@@ -1,6 +1,6 @@
 from beanie import Document
 from pydantic import Field
-from typing import Literal
+from typing import Literal, Optional
 from datetime import datetime
 
 
@@ -31,8 +31,8 @@ class Backtest(Document):
                     "loss", "breakeven"] = Field(..., description="Trade result status")
     atr: float = Field(...,
                        description="Average True Range (ATR) at the time of entry")
-    rsi: float = Field(...,
-                       description="Relative Strength Index (RSI) at the time of entry")
+    rsi: Optional[float] = Field(default=None,
+                                 description="Relative Strength Index (RSI) at the time of entry")
     atrMultiplier: float = Field(...,
                                  description="ATR multiplier used for take profit calculation")
     rrRatio: float = Field(...,

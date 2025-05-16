@@ -18,6 +18,15 @@ def find_next_swing_low(df, start_idx, lookahead=20):
     return df.iloc[start_idx:start_idx + lookahead]["low"].min()
 
 
+def calculate_macd(df: pd.DataFrame, fast_period: int = 12, slow_period: int = 26, signal_period: int = 9) -> pd.DataFrame:
+    macd = ta.trend.MACD(close=df["close"], window_slow=slow_period,
+                         window_fast=fast_period, window_sign=signal_period)
+    df["macd"] = macd.macd()
+    df["signal"] = macd.macd_signal()
+    df["hist"] = macd.macd_diff()
+    return df[["macd", "signal", "hist"]]
+
+
 def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     prev_close = df['close'].shift(1)
 
