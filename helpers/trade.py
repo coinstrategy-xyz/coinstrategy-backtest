@@ -51,7 +51,7 @@ async def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_t
     })
 
     if existing:
-        return None
+        return existing
 
     risk = atr * atr_multiplier
     reward = risk * rr_ratio
@@ -59,13 +59,12 @@ async def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_t
     if side == "long":
         sl = entry_price - risk
         tp = entry_price + reward
-        sl_pct = risk / entry_price
-        tp_pct = reward / entry_price
     else:
         sl = entry_price + risk
         tp = entry_price - reward
-        sl_pct = risk / entry_price
-        tp_pct = reward / entry_price
+
+    sl_pct = abs(sl - entry_price) / entry_price
+    tp_pct = abs(tp - entry_price) / entry_price
 
     for j in range(start_idx + 1, len(df)):
         row = df.iloc[j]
@@ -76,65 +75,68 @@ async def simulate_trade(strategy_name, df, start_idx, symbol, interval, entry_t
 
         high, low = row["high"], row["low"]
 
+        rsi_value = 0
+        if "rsi" in row and not pd.isna(row["rsi"]):
+            rsi_value = row["rsi"]
+
         if side == "long":
             if low <= sl:
+                result_pct = (sl - entry_price) / entry_price
                 return Backtest(
                     strategyName=strategy_name, symbol=symbol, interval=interval,
                     entryPrice=entry_price, entryTime=entry_time,
                     stopLossPrice=sl, stopLossPercent=sl_pct,
                     takeProfitPrice=tp, takeProfitPercent=tp_pct,
-                    exitTime=exit_time, resultPct=-sl_pct,
+                    exitTime=exit_time, resultPct=result_pct,
                     side="long", status="loss", atr=atr,
-                    rsi=row["rsi"], atrMultiplier=atr_multiplier, rrRatio=rr_ratio
+                    rsi=rsi_value, atrMultiplier=atr_multiplier, rrRatio=rr_ratio
                 )
             elif high >= tp:
+                result_pct = (tp - entry_price) / entry_price
                 return Backtest(
                     strategyName=strategy_name, symbol=symbol, interval=interval,
                     entryPrice=entry_price, entryTime=entry_time,
                     stopLossPrice=sl, stopLossPercent=sl_pct,
                     takeProfitPrice=tp, takeProfitPercent=tp_pct,
-                    exitTime=exit_time, resultPct=tp_pct,
+                    exitTime=exit_time, resultPct=result_pct,
                     side="long", status="win", atr=atr,
-                    rsi=row["rsi"], atrMultiplier=atr_multiplier, rrRatio=rr_ratio
+                    rsi=rsi_value, atrMultiplier=atr_multiplier, rrRatio=rr_ratio
                 )
         else:
             if high >= sl:
+                result_pct = (entry_price - sl) / entry_price
                 return Backtest(
                     strategyName=strategy_name, symbol=symbol, interval=interval,
                     entryPrice=entry_price, entryTime=entry_time,
                     stopLossPrice=sl, stopLossPercent=sl_pct,
                     takeProfitPrice=tp, takeProfitPercent=tp_pct,
-                    exitTime=exit_time, resultPct=-sl_pct,
+                    exitTime=exit_time, resultPct=result_pct,
                     side="short", status="loss", atr=atr,
-                    rsi=row["rsi"], atrMultiplier=atr_multiplier, rrRatio=rr_ratio
+                    rsi=rsi_value, atrMultiplier=atr_multiplier, rrRatio=rr_ratio
                 )
             elif low <= tp:
+                result_pct = (entry_price - tp) / entry_price
                 return Backtest(
                     strategyName=strategy_name, symbol=symbol, interval=interval,
                     entryPrice=entry_price, entryTime=entry_time,
                     stopLossPrice=sl, stopLossPercent=sl_pct,
                     takeProfitPrice=tp, takeProfitPercent=tp_pct,
-                    exitTime=exit_time, resultPct=tp_pct,
+                    exitTime=exit_time, resultPct=result_pct,
                     side="short", status="win", atr=atr,
-                    rsi=row["rsi"], atrMultiplier=atr_multiplier, rrRatio=rr_ratio
+                    rsi=rsi_value, atrMultiplier=atr_multiplier, rrRatio=rr_ratio
                 )
     return None
 
 
-def summarize_results(trades: List[Backtest]) -> dict[str, float]:
+def summarize_results(trades: List[Backtest], rr_ratio: float, initial_balance: float = 100.0) -> dict[str, float]:
     win_rate = sum(1 for t in trades if t.resultPct > 0) / \
         len(trades) if trades else 0
-
-    equity = [1.0]
-    for t in trades:
-        equity.append(equity[-1] * (1 + t.resultPct))
-
-    drawdowns = [(e / max(equity[:i + 1]) - 1)
-                 for i, e in enumerate(equity[1:])]
-    max_drawdown = min(drawdowns) if drawdowns else 0
-
-    initial_balance = 100
-    final_balance = equity[-1] * initial_balance
+    equity = simulate_equity_fixed_risk(trades, initial_balance)
+    max_drawdown = min((e / max(equity[:i+1]) - 1)
+                       for i, e in enumerate(equity[1:])) if len(equity) > 1 else 0
+    final_balance = equity[-1]
+    recovery_factor = calculate_recovery_factor(equity)
+    expectancy = (win_rate * rr_ratio) - (1 - win_rate) * 1
 
     total_hours = 0.0
     valid_trades = 0
@@ -148,11 +150,45 @@ def summarize_results(trades: List[Backtest]) -> dict[str, float]:
     return {
         "total_trades": len(trades),
         "win_rate": round(win_rate * 100, 2),
-        "total_return_pct": round((equity[-1] - 1) * 100, 2),
-        "max_drawdown_pct": round(max_drawdown * 100, 2),
         "final_balance": round(final_balance, 2),
+        "total_return_pct": round((final_balance - initial_balance) / initial_balance * 100, 2),
+        "max_drawdown_pct": round(max_drawdown * 100, 2),
+        "recovery_factor": recovery_factor,
+        "expectancy": round(expectancy, 2),
         "avg_hours_per_trade": round(avg_hours_per_trade, 2),
     }
+
+
+def simulate_equity_fixed_risk(trades: List[Backtest], initial_balance: float = 100.0) -> List[float]:
+    balance = initial_balance
+    equity = [balance]
+
+    for t in trades:
+        if t.resultPct > 0:
+            gain = balance * 0.01 * t.rrRatio
+            balance += gain
+        else:
+            loss = balance * 0.01
+            balance -= loss
+        equity.append(balance)
+
+    return equity
+
+
+def calculate_recovery_factor(equity: List[float]) -> float:
+    peak = equity[0]
+    max_drawdown = 0.0
+
+    for e in equity:
+        if e > peak:
+            peak = e
+        dd = (e - peak) / peak
+        max_drawdown = min(max_drawdown, dd)
+
+    total_return = (equity[-1] - equity[0])
+    rf = total_return / \
+        abs(max_drawdown * equity[0]) if max_drawdown < 0 else float("inf")
+    return round(rf, 2)
 
 
 def align_trend_to_lower_tf(df_lower: pd.DataFrame, df_higher: pd.DataFrame) -> pd.Series:

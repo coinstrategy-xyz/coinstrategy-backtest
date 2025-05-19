@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import APIRouter, Query
 from klines.kline_model import Kline
-from strategies import macd_crossover_volume_spike, rsi_ema_strategy
+from strategies import bollinger_breakout_strategy, macd_crossover_volume_spike, rsi_ema_strategy
 from pairs.pair_model import Pair
 from strategies.strategy_model import Strategy
 
@@ -12,16 +12,16 @@ semaphore = asyncio.Semaphore(1)  # Chỉ cho phép tối đa 5 task chạy cùn
 @router.get("/")
 async def backtest_all(strategySlug: str = Query(..., description="Slug của chiến lược, ví dụ: 'rsi-ema'")):
     pairs = await Pair.find().to_list()
-    intervals = ["15m", "1h", "4h"]
-    # pairs = ["BTCUSDT"]
-    # intervals = ["1h"]
+    # intervals = ["15m", "1h", "4h"]
+    pairs = ["BTCUSDT"]
+    intervals = ["1h"]
 
     tasks = []
 
     for pair in pairs:
         for interval in intervals:
             tasks.append(run_with_semaphore(
-                pair.symbol, interval, strategySlug))
+                pair, interval, strategySlug))
 
     results = await asyncio.gather(*tasks)
     return {"status": "completed", "count": len([r for r in results if r is not None])}
@@ -46,3 +46,5 @@ async def run_backtest(symbol: str, interval: str, strategySlug: str):
         return await rsi_ema_strategy.rsi_ema_strategy(klines, symbol, interval)
     elif strategySlug == "MACD-VolumeSpike":
         return await macd_crossover_volume_spike.macd_crossover_volume_spike(klines, symbol, interval)
+    elif strategySlug == "BollingerBreakout":
+        return await bollinger_breakout_strategy.bollinger_breakout_strategy(klines, symbol, interval)

@@ -1,5 +1,6 @@
 import pandas as pd
 import ta
+from ta.volatility import BollingerBands
 
 
 def calculate_rsi(df: pd.DataFrame, window: int = 14) -> pd.Series:
@@ -25,6 +26,21 @@ def calculate_macd(df: pd.DataFrame, fast_period: int = 12, slow_period: int = 2
     df["signal"] = macd.macd_signal()
     df["hist"] = macd.macd_diff()
     return df[["macd", "signal", "hist"]]
+
+
+def add_bollinger_indicators(df: pd.DataFrame, window: int = 20, stddev: float = 2.0) -> pd.DataFrame:
+    bb = BollingerBands(close=df["close"], window=window, window_dev=stddev)
+    df["bb_middle"] = bb.bollinger_mavg()
+    df["bb_upper"] = bb.bollinger_hband()
+    df["bb_lower"] = bb.bollinger_lband()
+
+    df["volume_ma"] = df["volume"].rolling(20).mean()
+    df["volume_spike"] = df["volume"] > (1.5 * df["volume_ma"])
+
+    df["atr"] = df["high"] - df["low"]
+    df["atr_ok"] = df["atr"] > (df["close"] * 0.005)
+
+    return df
 
 
 def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:

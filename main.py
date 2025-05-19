@@ -10,6 +10,7 @@ from klines.kline_router import router as kline_router
 from backtests.backtest_model import Backtest
 from pairs.pair_model import Pair
 from strategies.strategy_model import Strategy
+from strategies.strategy_router import router as strategy_router
 
 load_dotenv()
 
@@ -27,3 +28,4 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(kline_router)
 app.include_router(backtest_router)
+app.include_router(strategy_router)
