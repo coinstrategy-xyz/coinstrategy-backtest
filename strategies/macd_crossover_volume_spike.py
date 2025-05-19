@@ -41,10 +41,11 @@ async def macd_crossover_volume_spike(
     for atr_multiplier in atr_multipliers:
         for rr_ratio in rr_ratios:
             strategy = await Strategy.find_one(
+                Strategy.name == "MACD-VolumeSpike",
                 Strategy.symbol == symbol,
                 Strategy.interval == interval,
                 Strategy.rrRatio == rr_ratio,
-                Strategy.atr_multiplier == atr_multiplier,
+                Strategy.atrMultiplier == atr_multiplier,
             )
             if strategy:
                 print(
@@ -66,7 +67,9 @@ async def macd_crossover_volume_spike(
                     finalBalance=result["final_balance"],
                     avgHoursPerTrade=result["avg_hours_per_trade"],
                     rrRatio=rr_ratio,
-                    atr_multiplier=atr_multiplier,
+                    atrMultiplier=atr_multiplier,
+                    expectancy=result["expectancy"],
+                    recoveryFactor=result["recovery_factor"],
                 ))
 
 

@@ -18,8 +18,12 @@ class Strategy(Document):
     avgHoursPerTrade: float = Field(...,
                                     description="Average hours per trade")
     rrRatio: float = Field(..., description="Risk-reward ratio")
-    atr_multiplier: float = Field(
+    atrMultiplier: float = Field(
         ..., description="ATR multiplier used in the strategy")
+    expectancy: float = Field(
+        ..., description="Expectancy of the strategy based on win rate and risk-reward ratio")
+    recoveryFactor: float = Field(
+        ..., description="Recovery factor of the strategy based on drawdown and return")
 
     class Settings:
         name = "strategies"
