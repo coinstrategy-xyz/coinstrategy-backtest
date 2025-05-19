@@ -86,6 +86,8 @@ async def rsi_ema_strategy(
                         avgHoursPerTrade=result["avg_hours_per_trade"],
                         rrRatio=rr_ratio,
                         atrMultiplier=atr_multiplier,
+                        expectancy=result["expectancy"],
+                        recoveryFactor=result["recovery_factor"],
                     )
                     await Strategy.insert(strategy)
 
